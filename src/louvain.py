@@ -51,7 +51,7 @@ def louvain(graph):
         final_modularity (float)
     """
     # INITIAL PHASE: each node is its own community
-    nodes = graph.get_nodes()
+    nodes = list(graph.get_nodes())  # Ensure it's a list
     communities = {node: i for i, node in enumerate(nodes)}
 
     improved = True

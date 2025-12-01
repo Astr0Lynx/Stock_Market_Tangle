@@ -14,6 +14,32 @@ import random
 from .dfs import DFS, analyze_market_connectivity
 from .pagerank import PageRank, identify_market_influencers
 
+# Import additional algorithms for comprehensive disruption analysis
+try:
+    from .union_find import UnionFind
+except ImportError:
+    UnionFind = None
+
+try:
+    from .bfs import BFS
+except ImportError:
+    BFS = None
+
+try:
+    from .louvain import detect_communities as louvain_detect
+except ImportError:
+    louvain_detect = None
+
+try:
+    from .girvan_newman import GirvanNewman
+except ImportError:
+    GirvanNewman = None
+
+try:
+    from .node2vec import Node2Vec
+except ImportError:
+    Node2Vec = None
+
 
 class MarketDisruptionSimulator:
     """
@@ -359,12 +385,77 @@ class MarketDisruptionSimulator:
         return new_graph
     
     def _analyze_connectivity(self, graph):
-        """Analyze connectivity using DFS."""
-        return analyze_market_connectivity(graph, self.stock_attributes)
+        """Analyze connectivity using DFS, Union-Find, and BFS for comprehensive analysis."""
+        # Base connectivity from DFS
+        connectivity = analyze_market_connectivity(graph, self.stock_attributes)
+        
+        # Add Union-Find component analysis if available
+        if UnionFind is not None:
+            nodes = list(graph.get_nodes())
+            uf = UnionFind(len(nodes))
+            node_to_idx = {node: idx for idx, node in enumerate(nodes)}
+            
+            for u in nodes:
+                for v in graph.get_neighbors(u):
+                    if v in node_to_idx:
+                        uf.union(node_to_idx[u], node_to_idx[v])
+            
+            connectivity['union_find_components'] = len(set(uf.find(i) for i in range(len(nodes))))
+        
+        # Add BFS path analysis if available
+        if BFS is not None:
+            bfs = BFS(graph)
+            if nodes:
+                # Analyze average path lengths from random samples
+                sample_size = min(5, len(nodes))
+                import random
+                sample_nodes = random.sample(nodes, sample_size)
+                avg_paths = []
+                for node in sample_nodes:
+                    distances = bfs.shortest_paths(node)
+                    finite_distances = [d for d in distances.values() if d != float('inf')]
+                    if finite_distances:
+                        avg_paths.append(sum(finite_distances) / len(finite_distances))
+                
+                connectivity['avg_path_length'] = sum(avg_paths) / len(avg_paths) if avg_paths else float('inf')
+        
+        return connectivity
     
     def _analyze_influence(self, graph):
-        """Analyze influence using PageRank."""
-        return identify_market_influencers(graph, self.stock_attributes)
+        """Analyze influence using PageRank and community detection algorithms."""
+        # Base influence from PageRank
+        influence = identify_market_influencers(graph, self.stock_attributes)
+        
+        # Add Louvain community detection if available
+        if louvain_detect is not None:
+            try:
+                communities = louvain_detect(graph)
+                influence['louvain_communities'] = {
+                    'num_communities': len(set(communities.values())),
+                    'modularity': self._calculate_modularity(graph, communities)
+                }
+            except Exception:
+                pass
+        
+        # Add Girvan-Newman community detection if available
+        if GirvanNewman is not None:
+            try:
+                gn = GirvanNewman(graph)
+                gn_communities = gn.detect_communities(max_communities=10)
+                influence['girvan_newman_communities'] = len(gn_communities)
+            except Exception:
+                pass
+        
+        # Add Node2Vec embeddings if available
+        if Node2Vec is not None:
+            try:
+                n2v = Node2Vec(graph, dimensions=64, walk_length=30, num_walks=200)
+                embeddings = n2v.fit()
+                influence['node2vec_embedding_dim'] = len(next(iter(embeddings.values()))) if embeddings else 0
+            except Exception:
+                pass
+        
+        return influence
     
     def _compare_connectivity(self, original, modified):
         """Compare connectivity metrics between two graphs."""
@@ -387,6 +478,26 @@ class MarketDisruptionSimulator:
                 original['all_scores'], modified['all_scores']
             )
         }
+    
+    def _calculate_modularity(self, graph, communities):
+        """Calculate modularity score for community structure."""
+        nodes = list(graph.get_nodes())
+        m = sum(len(list(graph.get_neighbors(node))) for node in nodes) / 2  # Total edges
+        
+        if m == 0:
+            return 0.0
+        
+        modularity = 0.0
+        for node_i in nodes:
+            for node_j in nodes:
+                if communities.get(node_i) == communities.get(node_j):
+                    # Check if edge exists
+                    a_ij = 1 if node_j in graph.get_neighbors(node_i) else 0
+                    k_i = len(list(graph.get_neighbors(node_i)))
+                    k_j = len(list(graph.get_neighbors(node_j)))
+                    modularity += a_ij - (k_i * k_j) / (2 * m)
+        
+        return modularity / (2 * m)
     
     def _analyze_sector_impact(self, graph, original_influence, modified_influence):
         """Analyze impact on different market sectors."""

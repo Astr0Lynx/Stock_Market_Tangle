@@ -122,7 +122,7 @@ class UniversalBenchmarkRunner:
     def benchmark_union_find(self, graph, stock_attributes: Dict, 
                             scenario: str, num_stocks: int) -> Dict:
         """Benchmark Union-Find algorithm."""
-        from union_find import find_market_segments, analyze_market_segments
+        from src.union_find import find_market_segments, analyze_market_segments
         
         print(f"  Benchmarking Union-Find...")
         
@@ -137,7 +137,7 @@ class UniversalBenchmarkRunner:
         analysis = analyze_market_segments(uf, graph, stock_attributes)
         
         runtime = end_time - start_time
-        memory_used = mem_after - mem_before
+        memory_used = max(0, mem_after - mem_before)  # Prevent negative memory
         
         result = {
             'algorithm': 'Union-Find',
@@ -151,7 +151,7 @@ class UniversalBenchmarkRunner:
             'largest_component': max([len(c) for c in components]) if components else 0,
         }
         
-        print(f"    > Runtime: {runtime*1000:.2f}ms | Memory: {memory_used:.2f}MB")
+        print(f"    > Runtime: {runtime*1000:.4f}ms | Memory: {memory_used:.4f}MB")
         print(f"    > Components: {result['num_components']} | Largest: {result['largest_component']} stocks")
         
         return result
@@ -159,7 +159,7 @@ class UniversalBenchmarkRunner:
     def benchmark_bfs(self, graph, stock_attributes: Dict,
                      scenario: str, num_stocks: int, num_samples: int = 50) -> Dict:
         """Benchmark BFS algorithm."""
-        from bfs import bfs_shortest_path, analyze_graph_connectivity
+        from src.bfs import bfs_shortest_path, analyze_graph_connectivity
         
         print(f"  Benchmarking BFS...")
         
@@ -184,7 +184,7 @@ class UniversalBenchmarkRunner:
         connectivity = analyze_graph_connectivity(graph)
         
         runtime = end_time - start_time
-        memory_used = mem_after - mem_before
+        memory_used = max(0, mem_after - mem_before)  # Prevent negative memory
         avg_path_length = sum(path_lengths) / len(path_lengths) if path_lengths else 0
         
         result = {
@@ -200,8 +200,8 @@ class UniversalBenchmarkRunner:
             'connectivity': connectivity,
         }
         
-        print(f"    > Runtime: {runtime*1000:.2f}ms | Memory: {memory_used:.2f}MB")
-        print(f"    > Paths found: {len(path_lengths)}/{num_samples} | Avg length: {avg_path_length:.2f}")
+        print(f"    > Runtime: {runtime*1000:.4f}ms | Memory: {memory_used:.4f}MB")
+        print(f"    > Paths found: {len(path_lengths)}/{num_samples} | Avg length: {avg_path_length:.4f}")
         
         return result
     
@@ -221,7 +221,7 @@ class UniversalBenchmarkRunner:
         mem_after = get_memory_usage()
         
         runtime = end_time - start_time
-        memory_used = mem_after - mem_before
+        memory_used = max(0, mem_after - mem_before)  # Prevent negative memory
         num_communities = len(set(communities.values()))
         
         result = {
@@ -235,7 +235,7 @@ class UniversalBenchmarkRunner:
             'modularity': modularity_score,
         }
         
-        print(f"    > Runtime: {runtime*1000:.2f}ms | Memory: {memory_used:.2f}MB")
+        print(f"    > Runtime: {runtime*1000:.4f}ms | Memory: {memory_used:.4f}MB")
         print(f"    > Communities: {num_communities} | Modularity: {modularity_score:.4f}")
         
         return result
@@ -256,7 +256,7 @@ class UniversalBenchmarkRunner:
         mem_after = get_memory_usage()
         
         runtime = end_time - start_time
-        memory_used = mem_after - mem_before
+        memory_used = max(0, mem_after - mem_before)  # Prevent negative memory
         num_communities = len(communities)
         
         result = {
@@ -270,7 +270,7 @@ class UniversalBenchmarkRunner:
             'modularity': modularity_score,
         }
         
-        print(f"    > Runtime: {runtime*1000:.2f}ms | Memory: {memory_used:.2f}MB")
+        print(f"    > Runtime: {runtime*1000:.4f}ms | Memory: {memory_used:.4f}MB")
         print(f"    > Communities: {num_communities} | Modularity: {modularity_score:.4f}")
         
         return result
@@ -298,7 +298,7 @@ class UniversalBenchmarkRunner:
         mem_after = get_memory_usage()
         
         runtime = end_time - start_time
-        memory_used = mem_after - mem_before
+        memory_used = max(0, mem_after - mem_before)  # Prevent negative memory
         
         result = {
             'algorithm': 'DFS',
@@ -312,8 +312,8 @@ class UniversalBenchmarkRunner:
             'has_cycle': connectivity_info.get('has_cycle', False),
         }
         
-        print(f"    > Runtime: {runtime*1000:.2f}ms | Memory: {memory_used:.2f}MB")
-        print(f"    > Components: {len(components)} | Connectivity: {result['connectivity_ratio']:.3f}")
+        print(f"    > Runtime: {runtime*1000:.4f}ms | Memory: {memory_used:.4f}MB")
+        print(f"    > Components: {len(components)} | Connectivity: {result['connectivity_ratio']:.4f}")
         
         return result
     
@@ -338,7 +338,7 @@ class UniversalBenchmarkRunner:
         mem_after = get_memory_usage()
         
         runtime = end_time - start_time
-        memory_used = mem_after - mem_before
+        memory_used = max(0, mem_after - mem_before)  # Prevent negative memory
         
         top_stocks = pr.get_top_stocks(5)
         avg_score = sum(scores.values()) / len(scores) if scores else 0
@@ -355,7 +355,7 @@ class UniversalBenchmarkRunner:
             'top_score': top_stocks[0][1] if top_stocks else 0,
         }
         
-        print(f"    > Runtime: {runtime*1000:.2f}ms | Memory: {memory_used:.2f}MB")
+        print(f"    > Runtime: {runtime*1000:.4f}ms | Memory: {memory_used:.4f}MB")
         print(f"    > Iterations: {pr.iterations} | Top score: {result['top_score']:.4f}")
         
         return result
@@ -384,7 +384,7 @@ class UniversalBenchmarkRunner:
         mem_after = get_memory_usage()
         
         runtime = end_time - start_time
-        memory_used = mem_after - mem_before
+        memory_used = max(0, mem_after - mem_before)  # Prevent negative memory
         
         result = {
             'algorithm': 'Node2Vec',
@@ -396,7 +396,7 @@ class UniversalBenchmarkRunner:
             'num_embeddings': len(embeddings)
         }
         
-        print(f"    > Runtime: {runtime*1000:.2f}ms | Memory: {memory_used:.2f}MB")
+        print(f"    > Runtime: {runtime*1000:.4f}ms | Memory: {memory_used:.4f}MB")
         print(f"    > Embeddings: {len(embeddings)} nodes | Dim: {result['embedding_dim']}")
         
         return result
@@ -440,7 +440,15 @@ class UniversalBenchmarkRunner:
                 
                 # Build graph
                 print("  Building graph...")
-                threshold = 0.5 if scenario != "crash" else 0.3
+                # Realistic correlation thresholds for stock market analysis
+                if scenario == "stable":
+                    threshold = 0.35  # Stable: strong sector correlations
+                elif scenario == "normal":
+                    threshold = 0.45  # Normal: moderate correlations
+                elif scenario == "volatile":
+                    threshold = 0.40  # Volatile: reduced but present correlations
+                else:  # crash
+                    threshold = 0.30  # Crash: only strongest correlations survive
                 graph = build_graph_from_correlation(corr_matrix, stock_attrs, threshold)
                 
                 stats = get_graph_statistics(graph)
@@ -481,10 +489,19 @@ class UniversalBenchmarkRunner:
         
         for algorithm in self.ALGORITHMS.keys():
             try:
+                print(f"\n{'='*60}")
+                print(f"Starting {self.ALGORITHMS[algorithm]['display_name']} benchmarks...")
+                print(f"{'='*60}")
                 results = self.run_benchmark(algorithm, sizes, scenarios)
-                all_results.extend(results)
+                if results:
+                    all_results.extend(results)
+                    print(f"✓ {self.ALGORITHMS[algorithm]['display_name']}: {len(results)} test cases completed")
+                else:
+                    print(f"⚠ {self.ALGORITHMS[algorithm]['display_name']}: No results generated")
             except Exception as e:
-                print(f"\n⚠ Error benchmarking {algorithm}: {e}")
+                print(f"\n✗ Error benchmarking {self.ALGORITHMS[algorithm]['display_name']}: {e}")
+                import traceback
+                traceback.print_exc()
                 continue
         
         return all_results
@@ -519,10 +536,10 @@ class UniversalBenchmarkRunner:
             runtimes = [r['runtime_seconds'] for r in algo_results]
             memories = [r['memory_mb'] for r in algo_results]
             
-            print(f"  Average runtime: {np.mean(runtimes):.4f}s")
-            print(f"  Average memory: {np.mean(memories):.2f}MB")
-            print(f"  Fastest: {min(runtimes):.4f}s")
-            print(f"  Slowest: {max(runtimes):.4f}s")
+            print(f"  Average runtime: {np.mean(runtimes)*1000:.4f}ms ({np.mean(runtimes):.4f}s)")
+            print(f"  Average memory: {np.mean(memories):.4f}MB")
+            print(f"  Fastest: {min(runtimes)*1000:.4f}ms")
+            print(f"  Slowest: {max(runtimes)*1000:.4f}ms")
             print(f"  Total test cases: {len(algo_results)}")
 
 
@@ -572,8 +589,8 @@ def main():
         print("UNIVERSAL ALGORITHM BENCHMARKS")
     print("="*60 + "\n")
     
-    # Configuration
-    sizes = [50, 100, 200]
+    # Configuration - Realistic stock market sizes
+    sizes = [100, 250, 500]
     scenarios = ["stable", "normal", "volatile", "crash"]
     
     # Create runner and execute

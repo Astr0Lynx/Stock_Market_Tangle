@@ -229,12 +229,30 @@ The `visualize_results.py` script **automatically detects** your algorithm and m
 . venv/Scripts/activate  # Windows Git Bash
 # or: source venv/bin/activate  # macOS/Linux
 
-# Run visualizer (auto-discovers results JSON)
+# Option 1: Auto-detect all algorithms (default)
 python visualize_results.py
 
-# Or specify a file explicitly
-python visualize_results.py results/yourname_benchmarks.json
+# Option 2: Filter by specific algorithm (saves to results/<algorithm>/ folder)
+python visualize_results.py <algorithm_name>
+
+# Examples:
+python visualize_results.py union_find
+python visualize_results.py girvan_newman
+python visualize_results.py bfs
+python visualize_results.py dfs
+
+# Note: Algorithm name matches your Python filename without .py extension
+# e.g., if your file is src/girvan_newman.py, use: python visualize_results.py girvan_newman
+
+# Get help
+python visualize_results.py --help
 ```
+
+**How it works:**
+- Without an algorithm name: Generates visualizations for ALL algorithms found in benchmark results, saves to `results/`
+- With an algorithm name: Filters results for that specific algorithm, saves to `results/<algorithm_name>/`
+- Automatically looks for `results/<algorithm_name>_benchmarks.json` first
+- Falls back to any `*_benchmarks.json` file and filters by algorithm field
 
 ### What Gets Generated
 

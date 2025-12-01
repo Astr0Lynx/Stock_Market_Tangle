@@ -2,35 +2,80 @@
 Visualization Script for Benchmark Results
 Author: Guntesh Singh
 Description: Generate charts and graphs from benchmark data for report and presentation
+
+Usage:
+    python visualize_results.py                    # Auto-detect all algorithms
+    python visualize_results.py <algorithm_name>   # Filter by specific algorithm
+    
+Examples:
+    python visualize_results.py union_find
+    python visualize_results.py girvan_newman
+    python visualize_results.py bfs
 """
 
 import json
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import sys
 
 
-def load_benchmark_results(filepath=None):
+def normalize_algorithm_name(name):
+    """Normalize algorithm name for matching (lowercase, replace spaces/hyphens with underscores)."""
+    return name.lower().replace(' ', '_').replace('-', '_')
+
+
+def load_benchmark_results(filepath=None, algorithm_filter=None):
     """Load benchmark results from JSON file.
 
-    If `filepath` is None, look for any file in `results/` that ends with
-    `_benchmarks.json` or `guntesh_benchmarks.json` and load the first match.
+    If `filepath` is None, look for algorithm-specific file first (e.g., results/<algorithm>_benchmarks.json),
+    then fall back to any file ending with `_benchmarks.json`.
+    
+    Args:
+        filepath: Explicit path to JSON file
+        algorithm_filter: If provided, prefer loading results/<algorithm>_benchmarks.json
+    
+    Returns:
+        List of result dictionaries, optionally filtered by algorithm
     """
     if filepath:
         with open(filepath, 'r') as f:
-            return json.load(f)
-
-    # auto-discover
-    candidates = []
-    for fn in os.listdir('results'):
-        if fn.endswith('_benchmarks.json') or fn == 'guntesh_benchmarks.json':
-            candidates.append(os.path.join('results', fn))
-
-    if not candidates:
-        raise FileNotFoundError('No benchmark json file found in results/. Run benchmarks first.')
-
-    with open(candidates[0], 'r') as f:
-        return json.load(f)
+            all_results = json.load(f)
+    else:
+        # Try algorithm-specific file first
+        if algorithm_filter:
+            algo_file = f'results/{normalize_algorithm_name(algorithm_filter)}_benchmarks.json'
+            if os.path.exists(algo_file):
+                with open(algo_file, 'r') as f:
+                    all_results = json.load(f)
+                print(f"✓ Loaded from {algo_file}")
+                return all_results
+        
+        # Auto-discover any benchmark file
+        candidates = []
+        if os.path.exists('results'):
+            for fn in os.listdir('results'):
+                if fn.endswith('_benchmarks.json'):
+                    candidates.append(os.path.join('results', fn))
+        
+        if not candidates:
+            raise FileNotFoundError('No benchmark json file found in results/. Run benchmarks first.')
+        
+        with open(candidates[0], 'r') as f:
+            all_results = json.load(f)
+        print(f"✓ Loaded from {candidates[0]}")
+    
+    # Filter by algorithm if specified
+    if algorithm_filter:
+        normalized_filter = normalize_algorithm_name(algorithm_filter)
+        filtered = [r for r in all_results if normalize_algorithm_name(r.get('algorithm', '')) == normalized_filter]
+        if not filtered:
+            print(f"⚠ Warning: No results found for algorithm '{algorithm_filter}'")
+            print(f"  Available algorithms: {', '.join(set(r.get('algorithm', 'Unknown') for r in all_results))}")
+            sys.exit(1)
+        return filtered
+    
+    return all_results
 
 
 def plot_runtime_by_algorithm(results, output_dir='results'):
@@ -383,17 +428,34 @@ def create_summary_table(results, output_dir='results'):
 
 def main():
     """Generate all visualizations."""
+    # Parse command-line arguments
+    algorithm_filter = None
+    if len(sys.argv) > 1:
+        if sys.argv[1] in ['-h', '--help']:
+            print(__doc__)
+            sys.exit(0)
+        algorithm_filter = sys.argv[1]
+        # Remove .py extension if provided
+        if algorithm_filter.endswith('.py'):
+            algorithm_filter = algorithm_filter[:-3]
+    
     print("="*70)
     print("GENERATING VISUALIZATIONS")
+    if algorithm_filter:
+        print(f"Algorithm Filter: {algorithm_filter}")
     print("="*70)
     
-    # Create output directory
-    output_dir = 'results'
+    # Determine output directory
+    if algorithm_filter:
+        output_dir = f'results/{normalize_algorithm_name(algorithm_filter)}'
+    else:
+        output_dir = 'results'
+    
     os.makedirs(output_dir, exist_ok=True)
     
     # Load results
     print("\nLoading benchmark results...")
-    results = load_benchmark_results()
+    results = load_benchmark_results(algorithm_filter=algorithm_filter)
     print(f"✓ Loaded {len(results)} benchmark results")
     
     # Generate all plots
@@ -410,14 +472,18 @@ def main():
     print("\n" + "="*70)
     print("VISUALIZATION COMPLETE!")
     print("="*70)
-    print(f"\nGenerated {7} visualization files in '{output_dir}/':")
-    print("  1. runtime_comparison.png       - Algorithm runtime comparison")
-    print("  2. components_analysis.png       - Connected components analysis")
-    print("  3. path_length_analysis.png      - BFS path length analysis")
-    print("  4. graph_density.png             - Graph density by scenario")
-    print("  5. scalability_analysis.png      - Scalability vs edges")
-    print("  6. component_distribution.png    - Component size distributions")
-    print("  7. summary_table.png             - Summary table")
+    if algorithm_filter:
+        print(f"\nVisualization files saved to '{output_dir}/'")
+    else:
+        print(f"\nGenerated visualization files in '{output_dir}/':")
+        print("  - Per-algorithm runtime plots")
+        print("  - Combined runtime comparison")
+        print("  - Components analysis")
+        print("  - Path length analysis")
+        print("  - Graph density")
+        print("  - Scalability analysis")
+        print("  - Component distribution")
+        print("  - Summary table")
     print("\nThese can be used in your report and presentation!")
     print("="*70)
 

@@ -119,6 +119,47 @@ def plot_runtime_by_algorithm(results, output_dir='results'):
         print(f"✓ Saved: {out}")
 
 
+def plot_memory_by_algorithm(results, output_dir='results'):
+    """Plot memory usage vs graph size for each detected algorithm and scenario.
+
+    Produces one PNG per algorithm with 2x2 subplot grid (one per scenario).
+    """
+    algorithms = sorted(set(r['algorithm'] for r in results))
+    scenarios = sorted(set(r.get('scenario', 'default') for r in results))
+
+    # Per-algorithm plots with 2x2 subplots
+    for algo in algorithms:
+        algo_results = [r for r in results if r['algorithm'] == algo]
+        sizes = sorted(set(r['num_stocks'] for r in algo_results))
+
+        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        axes = axes.flatten()
+        
+        for idx, scenario in enumerate(scenarios):
+            ax = axes[idx]
+            memory_usage = []
+            for size in sizes:
+                match = [r for r in algo_results if r['num_stocks'] == size and r.get('scenario') == scenario]
+                memory_usage.append(match[0]['memory_mb'] if match else 0)  # Already in MB
+            
+            ax.plot(sizes, memory_usage, marker='s', linewidth=2, markersize=8, color=['#2E86AB', '#A23B72', '#F18F01', '#C73E1D'][idx])
+            ax.set_xlabel('Number of Stocks', fontsize=10)
+            ax.set_ylabel('Memory Usage (MB)', fontsize=10)
+            ax.set_title(f'{scenario.capitalize()} Market', fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3)
+            
+            # Add value labels on points
+            for x, y in zip(sizes, memory_usage):
+                ax.annotate(f'{y:.2f}', (x, y), textcoords="offset points", xytext=(0,5), ha='center', fontsize=8)
+
+        fig.suptitle(f'{algo} - Memory Usage by Market Scenario', fontsize=14, fontweight='bold')
+        plt.tight_layout()
+        out = f"{output_dir}/{algo.replace(' ', '_').lower()}_memory.png"
+        plt.savefig(out, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"✓ Saved: {out}")
+
+
 def plot_components_analysis(results, output_dir='results'):
     """Plot number of connected components when available in results.
 
@@ -482,6 +523,7 @@ def main():
     print("\nGenerating charts...")
     # runtime plots for detected algorithms
     plot_runtime_by_algorithm(results, output_dir)
+    plot_memory_by_algorithm(results, output_dir)
     plot_components_analysis(results, output_dir)
     plot_path_length_analysis(results, output_dir)
     plot_graph_density(results, output_dir)

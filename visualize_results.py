@@ -81,57 +81,42 @@ def load_benchmark_results(filepath=None, algorithm_filter=None):
 def plot_runtime_by_algorithm(results, output_dir='results'):
     """Plot runtime vs graph size for each detected algorithm and scenario.
 
-    Produces one PNG per algorithm and a combined comparison plot.
+    Produces one PNG per algorithm with 2x2 subplot grid (one per scenario).
     """
     algorithms = sorted(set(r['algorithm'] for r in results))
     scenarios = sorted(set(r.get('scenario', 'default') for r in results))
 
-    # Per-algorithm plots
+    # Per-algorithm plots with 2x2 subplots
     for algo in algorithms:
         algo_results = [r for r in results if r['algorithm'] == algo]
         sizes = sorted(set(r['num_stocks'] for r in algo_results))
 
-        fig, ax = plt.subplots(figsize=(8, 5))
-        for scenario in scenarios:
+        fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+        axes = axes.flatten()
+        
+        for idx, scenario in enumerate(scenarios):
+            ax = axes[idx]
             runtimes = []
             for size in sizes:
                 match = [r for r in algo_results if r['num_stocks'] == size and r.get('scenario') == scenario]
-                runtimes.append(match[0]['runtime_seconds'] if match else 0)
-            ax.plot(sizes, runtimes, marker='o', label=scenario.capitalize())
+                runtimes.append(match[0]['runtime_seconds'] * 1000 if match else 0)  # Convert to ms
+            
+            ax.plot(sizes, runtimes, marker='o', linewidth=2, markersize=8, color=['#2E86AB', '#A23B72', '#F18F01', '#C73E1D'][idx])
+            ax.set_xlabel('Number of Stocks', fontsize=10)
+            ax.set_ylabel('Runtime (milliseconds)', fontsize=10)
+            ax.set_title(f'{scenario.capitalize()} Market', fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3)
+            
+            # Add value labels on points
+            for x, y in zip(sizes, runtimes):
+                ax.annotate(f'{y:.2f}', (x, y), textcoords="offset points", xytext=(0,5), ha='center', fontsize=8)
 
-        ax.set_xlabel('Number of Stocks')
-        ax.set_ylabel('Runtime (s)')
-        ax.set_title(f'{algo} Runtime by Scenario')
-        ax.grid(True, alpha=0.3)
-        ax.legend()
+        fig.suptitle(f'{algo} - Runtime by Market Scenario', fontsize=14, fontweight='bold')
         plt.tight_layout()
         out = f"{output_dir}/{algo.replace(' ', '_').lower()}_runtime.png"
         plt.savefig(out, dpi=300, bbox_inches='tight')
         plt.close()
         print(f"✓ Saved: {out}")
-
-    # Combined comparison: runtime per algorithm for each scenario
-    sizes = sorted(set(r['num_stocks'] for r in results))
-    fig, axes = plt.subplots(1, len(scenarios), figsize=(5 * len(scenarios), 4), squeeze=False)
-    for j, scenario in enumerate(scenarios):
-        ax = axes[0][j]
-        for algo in algorithms:
-            vals = []
-            for size in sizes:
-                match = [r for r in results if r['algorithm'] == algo and r['num_stocks'] == size and r.get('scenario') == scenario]
-                vals.append(match[0]['runtime_seconds'] if match else 0)
-            ax.plot(sizes, vals, marker='o', label=algo)
-        ax.set_title(scenario.capitalize())
-        ax.set_xlabel('Number of Stocks')
-        ax.set_ylabel('Runtime (s)')
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-
-    plt.tight_layout()
-    out = f"{output_dir}/runtime_comparison_all_algorithms.png"
-    plt.savefig(out, dpi=300, bbox_inches='tight')
-    plt.close()
-    print(f"✓ Saved: {out}")
 
 
 def plot_components_analysis(results, output_dir='results'):
@@ -158,7 +143,15 @@ def plot_components_analysis(results, output_dir='results'):
             matches = [r for r in entries if r['num_stocks'] == size and r.get('scenario') == scenario]
             # If multiple algorithms provide components, sum or pick first
             comps.append(sum([m['num_components'] for m in matches]) if matches else 0)
-        ax.bar(x + i * width, comps, width, label=scenario.capitalize())
+        bars = ax.bar(x + i * width, comps, width, label=scenario.capitalize())
+        
+        # Add value labels on top of each bar
+        for bar in bars:
+            height = bar.get_height()
+            if height > 0:  # Only show label if bar has height
+                ax.text(bar.get_x() + bar.get_width()/2., height,
+                       f'{int(height)}',
+                       ha='center', va='bottom', fontsize=9, fontweight='bold')
 
     ax.set_xlabel('Graph Size')
     ax.set_ylabel('Number of Components')
@@ -179,7 +172,7 @@ def plot_path_length_analysis(results, output_dir='results'):
     """Plot average path length when present in result entries (e.g., BFS/DFS)."""
     entries = [r for r in results if 'avg_path_length' in r]
     if not entries:
-        print('⚠ No avg_path_length data found; skipping path length analysis')
+        # Silently skip if no path length data (e.g., Union-Find doesn't track paths)
         return
 
     algorithms = sorted(set(r['algorithm'] for r in entries))
@@ -211,7 +204,18 @@ def plot_graph_density(results, output_dir='results'):
     """
     Plot graph density across different scenarios.
     """
-    uf_results = [r for r in results if r['algorithm'] == 'Union-Find']
+    # Get unique algorithm from results
+    algorithms = set(r['algorithm'] for r in results)
+    if not algorithms:
+        return
+    
+    algo_filter = next(iter(algorithms))
+    uf_results = [r for r in results if r['algorithm'] == algo_filter]
+    
+    # Check if num_edges exists in the data
+    if not uf_results or 'num_edges' not in uf_results[0]:
+        print(f"⚠ No num_edges data found for {algo_filter}; skipping graph density chart")
+        return
     
     sizes = sorted(set(r['num_stocks'] for r in uf_results))
     scenarios = ['stable', 'normal', 'volatile', 'crash']
@@ -251,179 +255,195 @@ def plot_graph_density(results, output_dir='results'):
 
 def plot_scalability(results, output_dir='results'):
     """
-    Plot scalability: runtime vs graph size and edges.
+    Plot scalability: runtime vs graph size and edges for the algorithm in results.
     """
-    uf_results = [r for r in results if r['algorithm'] == 'Union-Find']
-    bfs_results = [r for r in results if r['algorithm'] == 'BFS']
+    # Get unique algorithms in results
+    algorithms = sorted(set(r['algorithm'] for r in results))
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    if not results:
+        print('⚠ No data for scalability analysis')
+        return
     
-    # Union-Find: runtime vs edges
-    edges = [r['num_edges'] for r in uf_results]
-    runtimes = [r['runtime_seconds'] * 1000 for r in uf_results]  # Convert to ms
-    colors = [{'stable': 'blue', 'normal': 'green', 
-               'volatile': 'orange', 'crash': 'red'}[r['scenario']] 
-              for r in uf_results]
-    
-    ax1.scatter(edges, runtimes, c=colors, alpha=0.6, s=100)
-    ax1.set_xlabel('Number of Edges', fontsize=12)
-    ax1.set_ylabel('Runtime (milliseconds)', fontsize=12)
-    ax1.set_title('Union-Find Scalability', fontsize=14, fontweight='bold')
-    ax1.grid(True, alpha=0.3)
-    
-    # Add legend
+    # Create legend elements
     from matplotlib.patches import Patch
     legend_elements = [Patch(facecolor='blue', label='Stable'),
                       Patch(facecolor='green', label='Normal'),
                       Patch(facecolor='orange', label='Volatile'),
                       Patch(facecolor='red', label='Crash')]
-    ax1.legend(handles=legend_elements)
     
-    # BFS: runtime vs edges
-    edges = [r['num_edges'] for r in bfs_results]
-    runtimes = [r['runtime_seconds'] * 1000 for r in bfs_results]  # Convert to ms
-    colors = [{'stable': 'blue', 'normal': 'green', 
-               'volatile': 'orange', 'crash': 'red'}[r['scenario']] 
-              for r in bfs_results]
-    
-    ax2.scatter(edges, runtimes, c=colors, alpha=0.6, s=100)
-    ax2.set_xlabel('Number of Edges', fontsize=12)
-    ax2.set_ylabel('Runtime (milliseconds)', fontsize=12)
-    ax2.set_title('BFS Scalability', fontsize=14, fontweight='bold')
-    ax2.grid(True, alpha=0.3)
-    ax2.legend(handles=legend_elements)
-    
-    plt.tight_layout()
-    plt.savefig(f'{output_dir}/scalability_analysis.png', dpi=300, bbox_inches='tight')
-    print(f"✓ Saved: {output_dir}/scalability_analysis.png")
-    plt.close()
+    # Plot for each algorithm
+    for algo in algorithms:
+        algo_results = [r for r in results if r['algorithm'] == algo]
+        
+        if not algo_results:
+            continue
+        
+        # Skip if num_edges not present in data
+        if 'num_edges' not in algo_results[0]:
+            print(f"⚠ No num_edges data found for {algo}; skipping scalability chart")
+            continue
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        edges = [r['num_edges'] for r in algo_results]
+        runtimes = [r['runtime_seconds'] * 1000 for r in algo_results]  # Convert to ms
+        colors = [{'stable': 'blue', 'normal': 'green', 
+                   'volatile': 'orange', 'crash': 'red'}[r['scenario']] 
+                  for r in algo_results]
+        
+        ax.scatter(edges, runtimes, c=colors, alpha=0.6, s=100)
+        ax.set_xlabel('Number of Edges', fontsize=12)
+        ax.set_ylabel('Runtime (milliseconds)', fontsize=12)
+        ax.set_title(f'{algo} Scalability: Runtime vs Graph Density', fontsize=14, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.legend(handles=legend_elements)
+        
+        plt.tight_layout()
+        out = f"{output_dir}/{algo.replace(' ', '_').lower()}_scalability.png"
+        plt.savefig(out, dpi=300, bbox_inches='tight')
+        print(f"✓ Saved: {out}")
+        plt.close()
 
 
 def plot_component_size_distribution(results, output_dir='results'):
     """
     Plot distribution of component sizes for largest graph.
     """
-    uf_results = [r for r in results if r['algorithm'] == 'Union-Find']
+    # Get unique algorithms in results
+    algorithms = sorted(set(r['algorithm'] for r in results))
     
-    # Get largest graph for each scenario (200 stocks)
-    scenarios = ['stable', 'normal', 'volatile', 'crash']
-    
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-    axes = axes.flatten()
-    
-    for i, scenario in enumerate(scenarios):
-        matching = [r for r in uf_results 
-                   if r['num_stocks'] == 200 and r['scenario'] == scenario]
+    for algo in algorithms:
+        algo_results = [r for r in results if r['algorithm'] == algo]
         
-        if matching and matching[0]['component_sizes']:
-            sizes = matching[0]['component_sizes']
+        if not algo_results:
+            continue
+        
+        # Get largest graph for each scenario (200 stocks)
+        scenarios = ['stable', 'normal', 'volatile', 'crash']
+        
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        axes = axes.flatten()
+        
+        for i, scenario in enumerate(scenarios):
+            matching = [r for r in algo_results 
+                       if r['num_stocks'] == 200 and r['scenario'] == scenario]
             
-            # Create histogram
-            axes[i].hist(sizes, bins=20, color='skyblue', edgecolor='black', alpha=0.7)
-            axes[i].set_xlabel('Component Size', fontsize=11)
-            axes[i].set_ylabel('Frequency', fontsize=11)
-            axes[i].set_title(f'{scenario.capitalize()} Market - Component Distribution', 
-                            fontsize=12, fontweight='bold')
-            axes[i].grid(True, alpha=0.3, axis='y')
-            
-            # Add statistics
-            avg_size = np.mean(sizes)
-            max_size = max(sizes)
-            axes[i].axvline(avg_size, color='red', linestyle='--', 
-                          label=f'Avg: {avg_size:.1f}')
-            axes[i].axvline(max_size, color='green', linestyle='--', 
-                          label=f'Max: {max_size}')
-            axes[i].legend()
-    
-    plt.tight_layout()
-    plt.savefig(f'{output_dir}/component_distribution.png', dpi=300, bbox_inches='tight')
-    print(f"✓ Saved: {output_dir}/component_distribution.png")
-    plt.close()
+            if matching and matching[0].get('component_sizes'):
+                sizes = matching[0]['component_sizes']
+                
+                # Create histogram
+                axes[i].hist(sizes, bins=20, color='skyblue', edgecolor='black', alpha=0.7)
+                axes[i].set_xlabel('Component Size', fontsize=11)
+                axes[i].set_ylabel('Frequency', fontsize=11)
+                axes[i].set_title(f'{scenario.capitalize()} Market - Component Distribution', 
+                                fontsize=12, fontweight='bold')
+                axes[i].grid(True, alpha=0.3, axis='y')
+                
+                # Add statistics
+                avg_size = np.mean(sizes)
+                max_size = max(sizes)
+                axes[i].axvline(avg_size, color='red', linestyle='--', 
+                              label=f'Avg: {avg_size:.1f}')
+                axes[i].legend()
+            else:
+                axes[i].text(0.5, 0.5, 'No component size data', 
+                           ha='center', va='center', transform=axes[i].transAxes)
+                axes[i].set_title(f'{scenario.capitalize()} Market', fontweight='bold')
+        
+        plt.suptitle(f'{algo} - Component Size Distribution (200 Stocks)', 
+                    fontsize=15, fontweight='bold')
+        plt.tight_layout()
+        
+        out = f"{output_dir}/{algo.replace(' ', '_').lower()}_component_distribution.png"
+        plt.savefig(out, dpi=300, bbox_inches='tight')
+        print(f"✓ Saved: {out}")
+        plt.close()
 
 
 def create_summary_table(results, output_dir='results'):
     """
-    Create a summary table image.
+    Create a summary table image for each algorithm in results.
     """
-    uf_results = [r for r in results if r['algorithm'] == 'Union-Find']
-    bfs_results = [r for r in results if r['algorithm'] == 'BFS']
+    # Get unique algorithms in results
+    algorithms = sorted(set(r['algorithm'] for r in results))
     
-    # Prepare data
-    scenarios = ['stable', 'normal', 'volatile', 'crash']
-    sizes = [50, 100, 200]
-    
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
-    
-    # Union-Find table
-    uf_data = []
-    for scenario in scenarios:
-        row = [scenario.capitalize()]
-        for size in sizes:
-            matching = [r for r in uf_results 
-                       if r['num_stocks'] == size and r['scenario'] == scenario]
-            if matching:
-                r = matching[0]
-                row.append(f"{r['num_components']}\n({r['runtime_seconds']*1000:.2f}ms)")
-            else:
-                row.append("N/A")
-        uf_data.append(row)
-    
-    ax1.axis('tight')
-    ax1.axis('off')
-    table1 = ax1.table(cellText=uf_data,
-                       colLabels=['Scenario', '50 stocks', '100 stocks', '200 stocks'],
-                       cellLoc='center',
-                       loc='center',
-                       colWidths=[0.25, 0.25, 0.25, 0.25])
-    table1.auto_set_font_size(False)
-    table1.set_fontsize(10)
-    table1.scale(1, 2)
-    
-    # Style header
-    for i in range(4):
-        table1[(0, i)].set_facecolor('#4CAF50')
-        table1[(0, i)].set_text_props(weight='bold', color='white')
-    
-    ax1.set_title('Union-Find: Components (Runtime)', 
-                  fontsize=14, fontweight='bold', pad=20)
-    
-    # BFS table
-    bfs_data = []
-    for scenario in scenarios:
-        row = [scenario.capitalize()]
-        for size in sizes:
-            matching = [r for r in bfs_results 
-                       if r['num_stocks'] == size and r['scenario'] == scenario]
-            if matching:
-                r = matching[0]
-                row.append(f"{r['avg_path_length']:.2f}\n({r['runtime_seconds']*1000:.2f}ms)")
-            else:
-                row.append("N/A")
-        bfs_data.append(row)
-    
-    ax2.axis('tight')
-    ax2.axis('off')
-    table2 = ax2.table(cellText=bfs_data,
-                       colLabels=['Scenario', '50 stocks', '100 stocks', '200 stocks'],
-                       cellLoc='center',
-                       loc='center',
-                       colWidths=[0.25, 0.25, 0.25, 0.25])
-    table2.auto_set_font_size(False)
-    table2.set_fontsize(10)
-    table2.scale(1, 2)
-    
-    # Style header
-    for i in range(4):
-        table2[(0, i)].set_facecolor('#2196F3')
-        table2[(0, i)].set_text_props(weight='bold', color='white')
-    
-    ax2.set_title('BFS: Avg Path Length (Runtime)', 
-                  fontsize=14, fontweight='bold', pad=20)
-    
-    plt.tight_layout()
-    plt.savefig(f'{output_dir}/summary_table.png', dpi=300, bbox_inches='tight')
-    print(f"✓ Saved: {output_dir}/summary_table.png")
-    plt.close()
+    for algo in algorithms:
+        algo_results = [r for r in results if r['algorithm'] == algo]
+        
+        if not algo_results:
+            continue
+        
+        # Prepare data
+        scenarios = ['stable', 'normal', 'volatile', 'crash']
+        sizes = sorted(set(r['num_stocks'] for r in algo_results))
+        
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        # Build table data
+        table_data = []
+        # Check if this algorithm has components and edges data
+        has_components = any('num_components' in r for r in algo_results)
+        has_edges = any('num_edges' in r for r in algo_results)
+        
+        # Determine table structure
+        if has_components and has_edges:
+            table_data.append(['Scenario', 'Stocks', 'Edges', 'Components', 'Runtime (ms)'])
+            col_widths = [0.2, 0.15, 0.15, 0.2, 0.2]
+        elif has_edges:
+            table_data.append(['Scenario', 'Stocks', 'Edges', 'Runtime (ms)'])
+            col_widths = [0.25, 0.2, 0.2, 0.25]
+        else:
+            table_data.append(['Scenario', 'Stocks', 'Runtime (ms)'])
+            col_widths = [0.35, 0.3, 0.3]
+        
+        for scenario in scenarios:
+            for size in sizes:
+                matching = [r for r in algo_results 
+                           if r['scenario'] == scenario and r['num_stocks'] == size]
+                
+                if matching:
+                    r = matching[0]
+                    row = [scenario.capitalize(), str(r['num_stocks'])]
+                    
+                    if has_edges:
+                        row.append(str(r['num_edges']))
+                    
+                    if has_components:
+                        row.append(str(r.get('num_components', 'N/A')))
+                    
+                    row.append(f"{r['runtime_seconds']*1000:.2f}")
+                    table_data.append(row)
+        
+        # Create table
+        num_cols = len(table_data[0])
+        
+        table = ax.table(cellText=table_data, cellLoc='center', loc='center',
+                        colWidths=col_widths)
+        
+        table.auto_set_font_size(False)
+        table.set_fontsize(10)
+        table.scale(1, 2)
+        
+        # Style header row
+        for i in range(num_cols):
+            table[(0, i)].set_facecolor('#4472C4')
+            table[(0, i)].set_text_props(weight='bold', color='white')
+        
+        # Alternate row colors
+        for i in range(1, len(table_data)):
+            color = '#E7E6E6' if i % 2 == 0 else 'white'
+            for j in range(num_cols):
+                table[(i, j)].set_facecolor(color)
+        
+        ax.axis('off')
+        ax.set_title(f'{algo} - Performance Summary', 
+                    fontsize=16, fontweight='bold', pad=20)
+        
+        plt.tight_layout()
+        out = f"{output_dir}/{algo.replace(' ', '_').lower()}_summary_table.png"
+        plt.savefig(out, dpi=300, bbox_inches='tight')
+        print(f"✓ Saved: {out}")
+        plt.close()
 
 
 def main():
@@ -466,7 +486,6 @@ def main():
     plot_path_length_analysis(results, output_dir)
     plot_graph_density(results, output_dir)
     plot_scalability(results, output_dir)
-    plot_component_size_distribution(results, output_dir)
     create_summary_table(results, output_dir)
     
     print("\n" + "="*70)

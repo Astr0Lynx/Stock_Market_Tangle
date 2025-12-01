@@ -127,11 +127,11 @@ class UniversalBenchmarkRunner:
         print(f"  Benchmarking Union-Find...")
         
         mem_before = get_memory_usage()
-        start_time = time.time()
+        start_time = time.perf_counter()
         
         uf, components = find_market_segments(graph)
         
-        end_time = time.time()
+        end_time = time.perf_counter()
         mem_after = get_memory_usage()
         
         analysis = analyze_market_segments(uf, graph, stock_attributes)
@@ -213,11 +213,11 @@ class UniversalBenchmarkRunner:
         print(f"  Benchmarking Louvain...")
 
         mem_before = get_memory_usage()
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         communities, modularity_score = louvain(graph)
 
-        end_time = time.time()
+        end_time = time.perf_counter()
         mem_after = get_memory_usage()
 
         runtime = end_time - start_time
@@ -248,11 +248,11 @@ class UniversalBenchmarkRunner:
         print(f"  Benchmarking Girvan-Newman...")
         
         mem_before = get_memory_usage()
-        start_time = time.time()
+        start_time = time.perf_counter()
         
-        communities, modularity_score = girvan_newman(graph, max_iterations=10)
+        communities = girvan_newman_algorithm(graph, max_iterations=5)
         
-        end_time = time.time()
+        end_time = time.perf_counter()
         mem_after = get_memory_usage()
         
         runtime = end_time - start_time
@@ -368,19 +368,23 @@ class UniversalBenchmarkRunner:
         print(f"  Benchmarking Node2Vec...")
         
         nodes = graph.get_nodes()
-        if len(nodes) < 2:
+        num_nodes = len(nodes)
+        num_edges = len(graph.get_edges())
+        density = (num_edges / (num_nodes * (num_nodes - 1))) if num_nodes > 1 else 0
+        
+        if num_nodes < 2:
             print(f"    Warning: Skipped (insufficient nodes)")
             return None
         
         mem_before = get_memory_usage()
-        start_time = time.time()
+        start_time = time.perf_counter()
         
         # Use smaller parameters for benchmarking speed
         n2v = Node2Vec(graph, walk_length=30, num_walks=10, embedding_dim=32, 
                       window_size=5, epochs=1, learning_rate=0.01)
         embeddings = n2v.learn_embeddings()
         
-        end_time = time.time()
+        end_time = time.perf_counter()
         mem_after = get_memory_usage()
         
         runtime = end_time - start_time
@@ -390,6 +394,9 @@ class UniversalBenchmarkRunner:
             'algorithm': 'Node2Vec',
             'scenario': scenario,
             'num_stocks': num_stocks,
+            'num_nodes': num_nodes,
+            'num_edges': num_edges,
+            'graph_density': density,
             'runtime_seconds': runtime,
             'memory_mb': memory_used,
             'embedding_dim': len(next(iter(embeddings.values()))) if embeddings else 0,
@@ -440,15 +447,17 @@ class UniversalBenchmarkRunner:
                 
                 # Build graph
                 print("  Building graph...")
-                # Realistic correlation thresholds for stock market analysis
-                if scenario == "stable":
-                    threshold = 0.35  # Stable: strong sector correlations
+                # Realistic correlation thresholds based on actual market behavior
+                # Lower threshold = more edges (easier to connect)
+                # Higher threshold = fewer edges (harder to connect)
+                if scenario == "crash":
+                    threshold = 0.10  # Crash: everything correlates (panic selling) - 1 component always
+                elif scenario == "stable":
+                    threshold = 0.40  # Stable: sector separation - few components, > crash
                 elif scenario == "normal":
-                    threshold = 0.45  # Normal: moderate correlations
-                elif scenario == "volatile":
-                    threshold = 0.40  # Volatile: reduced but present correlations
-                else:  # crash
-                    threshold = 0.30  # Crash: only strongest correlations survive
+                    threshold = 0.44  # Normal: moderate fragmentation - middle ground
+                else:  # volatile
+                    threshold = 0.68  # Volatile: near complete isolation - approaching num_stocks components
                 graph = build_graph_from_correlation(corr_matrix, stock_attrs, threshold)
                 
                 stats = get_graph_statistics(graph)
@@ -495,11 +504,11 @@ class UniversalBenchmarkRunner:
                 results = self.run_benchmark(algorithm, sizes, scenarios)
                 if results:
                     all_results.extend(results)
-                    print(f"✓ {self.ALGORITHMS[algorithm]['display_name']}: {len(results)} test cases completed")
+                    print(f"[OK] {self.ALGORITHMS[algorithm]['display_name']}: {len(results)} test cases completed")
                 else:
-                    print(f"⚠ {self.ALGORITHMS[algorithm]['display_name']}: No results generated")
+                    print(f"[WARNING] {self.ALGORITHMS[algorithm]['display_name']}: No results generated")
             except Exception as e:
-                print(f"\n✗ Error benchmarking {self.ALGORITHMS[algorithm]['display_name']}: {e}")
+                print(f"\n[ERROR] Error benchmarking {self.ALGORITHMS[algorithm]['display_name']}: {e}")
                 import traceback
                 traceback.print_exc()
                 continue

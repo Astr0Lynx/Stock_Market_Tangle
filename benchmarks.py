@@ -104,6 +104,12 @@ class UniversalBenchmarkRunner:
             'import_path': 'pagerank',
             'functions': ['PageRank', 'identify_market_influencers'],
             'branch': 'main'
+        },
+        'node2vec': {
+            'display_name': 'Node2Vec',
+            'import_path': 'node2vec',
+            'functions': ['Node2Vec'],
+            'branch': 'main / vaibhavi-node2vec'
         }
     }
     
@@ -354,6 +360,47 @@ class UniversalBenchmarkRunner:
         
         return result
     
+    def benchmark_node2vec(self, graph, stock_attributes: Dict,
+                          scenario: str, num_stocks: int) -> Dict:
+        """Benchmark Node2Vec algorithm."""
+        from src.node2vec import Node2Vec
+        
+        print(f"  Benchmarking Node2Vec...")
+        
+        nodes = graph.get_nodes()
+        if len(nodes) < 2:
+            print(f"    Warning: Skipped (insufficient nodes)")
+            return None
+        
+        mem_before = get_memory_usage()
+        start_time = time.time()
+        
+        # Use smaller parameters for benchmarking speed
+        n2v = Node2Vec(graph, walk_length=30, num_walks=10, embedding_dim=32, 
+                      window_size=5, epochs=1, learning_rate=0.01)
+        embeddings = n2v.learn_embeddings()
+        
+        end_time = time.time()
+        mem_after = get_memory_usage()
+        
+        runtime = end_time - start_time
+        memory_used = mem_after - mem_before
+        
+        result = {
+            'algorithm': 'Node2Vec',
+            'scenario': scenario,
+            'num_stocks': num_stocks,
+            'runtime_seconds': runtime,
+            'memory_mb': memory_used,
+            'embedding_dim': len(next(iter(embeddings.values()))) if embeddings else 0,
+            'num_embeddings': len(embeddings)
+        }
+        
+        print(f"    > Runtime: {runtime*1000:.2f}ms | Memory: {memory_used:.2f}MB")
+        print(f"    > Embeddings: {len(embeddings)} nodes | Dim: {result['embedding_dim']}")
+        
+        return result
+    
     def run_benchmark(self, algorithm: str, sizes: List[int], scenarios: List[str]) -> List[Dict]:
         """
         Run benchmark for a specific algorithm.
@@ -413,6 +460,8 @@ class UniversalBenchmarkRunner:
                     result = self.benchmark_dfs(graph, stock_attrs, scenario, size)
                 elif algorithm == 'pagerank':
                     result = self.benchmark_pagerank(graph, stock_attrs, scenario, size)
+                elif algorithm == 'node2vec':
+                    result = self.benchmark_node2vec(graph, stock_attrs, scenario, size)
                 else:
                     print(f"  Warning: No benchmark implementation for {algorithm}")
                     continue

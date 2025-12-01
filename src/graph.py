@@ -158,7 +158,57 @@ class Graph:
         Returns:
             Edge weight or None if edge doesn't exist
         """
-        return self.adjacency_list.get(node1, {}).get(node2)
+        return self.adjacency_list.get(node1, {}).get(node2, None)
+    
+    # Compatibility methods for networkx-style code (like Girvan-Newman)
+    def nodes(self) -> List[str]:
+        """Alias for get_nodes() for networkx compatibility."""
+        return self.get_nodes()
+    
+    def edges(self) -> List[Tuple[str, str, float]]:
+        """Alias for get_edges() for networkx compatibility."""
+        return self.get_edges()
+    
+    def degree(self, node: str) -> int:
+        """Alias for get_degree() for networkx compatibility."""
+        return self.get_degree(node)
+    
+    def neighbors(self, node: str) -> List[str]:
+        """Get neighbors of a node (returns list of node names)."""
+        return list(self.get_neighbors(node).keys())
+    
+    def get_weight(self, node1: str, node2: str) -> Optional[float]:
+        """Alias for get_edge_weight() for compatibility."""
+        return self.get_edge_weight(node1, node2)
+    
+    def total_edge_weight(self) -> float:
+        """Get total weight of all edges in the graph."""
+        total = 0.0
+        for node, neighbors in self.adjacency_list.items():
+            for neighbor, weight in neighbors.items():
+                total += weight
+        return total / 2  # Divide by 2 since edges are counted twice in undirected graph
+    
+    def number_of_nodes(self) -> int:
+        """Get number of nodes in the graph."""
+        return self.num_nodes
+    
+    def number_of_edges(self) -> int:
+        """Get number of edges in the graph."""
+        return self.num_edges
+    
+    def copy(self) -> 'Graph':
+        """Create a deep copy of the graph."""
+        new_graph = Graph()
+        # Deep copy adjacency list
+        for node, neighbors in self.adjacency_list.items():
+            new_graph.adjacency_list[node] = neighbors.copy()
+        # Deep copy attributes
+        for node, attrs in self.node_attributes.items():
+            new_graph.node_attributes[node] = attrs.copy()
+        new_graph.num_nodes = self.num_nodes
+        new_graph.num_edges = self.num_edges
+        return new_graph
     
     def __str__(self) -> str:
         """String representation of the graph."""

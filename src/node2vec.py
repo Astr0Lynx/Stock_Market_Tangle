@@ -80,7 +80,8 @@ class Node2Vec:
         
         while len(walk) < self.walk_length:
             current = walk[-1]
-            neighbors = self.graph.get_neighbors(current)
+            neighbors_dict = self.graph.get_neighbors(current)
+            neighbors = list(neighbors_dict.keys())
             
             if not neighbors:
                 break

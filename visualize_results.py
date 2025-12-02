@@ -48,7 +48,7 @@ def load_benchmark_results(filepath=None, algorithm_filter=None):
             if os.path.exists(algo_file):
                 with open(algo_file, 'r') as f:
                     all_results = json.load(f)
-                print(f"✓ Loaded from {algo_file}")
+                print(f"[OK] Loaded from {algo_file}")
                 return all_results
         
         # Auto-discover any benchmark file
@@ -116,7 +116,7 @@ def plot_runtime_by_algorithm(results, output_dir='results'):
         out = f"{output_dir}/{algo.replace(' ', '_').lower()}_runtime.png"
         plt.savefig(out, dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"✓ Saved: {out}")
+        print(f"[OK] Saved: {out}")
 
 
 def plot_memory_by_algorithm(results, output_dir='results'):
@@ -157,7 +157,7 @@ def plot_memory_by_algorithm(results, output_dir='results'):
         out = f"{output_dir}/{algo.replace(' ', '_').lower()}_memory.png"
         plt.savefig(out, dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"✓ Saved: {out}")
+        print(f"[OK] Saved: {out}")
 
 
 def plot_components_analysis(results, output_dir='results'):
@@ -167,7 +167,7 @@ def plot_components_analysis(results, output_dir='results'):
     """
     entries = [r for r in results if 'num_components' in r]
     if not entries:
-        print('⚠ No num_components data found; skipping components analysis')
+        print('[WARNING] No num_components data found; skipping components analysis')
         return
 
     algorithms = sorted(set(r['algorithm'] for r in entries))
@@ -206,7 +206,7 @@ def plot_components_analysis(results, output_dir='results'):
     plt.tight_layout()
     plt.savefig(out, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"✓ Saved: {out}")
+    print(f"[OK] Saved: {out}")
 
 
 def plot_path_length_analysis(results, output_dir='results'):
@@ -238,7 +238,7 @@ def plot_path_length_analysis(results, output_dir='results'):
         plt.tight_layout()
         plt.savefig(out, dpi=300, bbox_inches='tight')
         plt.close()
-        print(f"✓ Saved: {out}")
+        print(f"[OK] Saved: {out}")
 
 
 def plot_graph_density(results, output_dir='results'):
@@ -255,7 +255,7 @@ def plot_graph_density(results, output_dir='results'):
     
     # Check if num_edges exists in the data
     if not uf_results or 'num_edges' not in uf_results[0]:
-        print(f"⚠ No num_edges data found for {algo_filter}; skipping graph density chart")
+        print(f"[WARNING] No num_edges data found for {algo_filter}; skipping graph density chart")
         return
     
     sizes = sorted(set(r['num_stocks'] for r in uf_results))
@@ -290,7 +290,7 @@ def plot_graph_density(results, output_dir='results'):
     
     plt.tight_layout()
     plt.savefig(f'{output_dir}/graph_density.png', dpi=300, bbox_inches='tight')
-    print(f"✓ Saved: {output_dir}/graph_density.png")
+    print(f"[OK] Saved: {output_dir}/graph_density.png")
     plt.close()
 
 
@@ -302,7 +302,7 @@ def plot_scalability(results, output_dir='results'):
     algorithms = sorted(set(r['algorithm'] for r in results))
     
     if not results:
-        print('⚠ No data for scalability analysis')
+        print('[WARNING] No data for scalability analysis')
         return
     
     # Create legend elements
@@ -321,7 +321,7 @@ def plot_scalability(results, output_dir='results'):
         
         # Skip if num_edges not present in data
         if 'num_edges' not in algo_results[0]:
-            print(f"⚠ No num_edges data found for {algo}; skipping scalability chart")
+            print(f"[WARNING] No num_edges data found for {algo}; skipping scalability chart")
             continue
         
         fig, ax = plt.subplots(figsize=(10, 6))
@@ -342,7 +342,7 @@ def plot_scalability(results, output_dir='results'):
         plt.tight_layout()
         out = f"{output_dir}/{algo.replace(' ', '_').lower()}_scalability.png"
         plt.savefig(out, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved: {out}")
+        print(f"[OK] Saved: {out}")
         plt.close()
 
 
@@ -397,7 +397,7 @@ def plot_component_size_distribution(results, output_dir='results'):
         
         out = f"{output_dir}/{algo.replace(' ', '_').lower()}_component_distribution.png"
         plt.savefig(out, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved: {out}")
+        print(f"[OK] Saved: {out}")
         plt.close()
 
 
@@ -483,7 +483,7 @@ def create_summary_table(results, output_dir='results'):
         plt.tight_layout()
         out = f"{output_dir}/{algo.replace(' ', '_').lower()}_summary_table.png"
         plt.savefig(out, dpi=300, bbox_inches='tight')
-        print(f"✓ Saved: {out}")
+        print(f"[OK] Saved: {out}")
         plt.close()
 
 
@@ -517,7 +517,7 @@ def main():
     # Load results
     print("\nLoading benchmark results...")
     results = load_benchmark_results(algorithm_filter=algorithm_filter)
-    print(f"✓ Loaded {len(results)} benchmark results")
+    print(f"[OK] Loaded {len(results)} benchmark results")
     
     # Generate all plots
     print("\nGenerating charts...")

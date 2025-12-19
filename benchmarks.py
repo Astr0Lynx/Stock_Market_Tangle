@@ -126,11 +126,14 @@ class UniversalBenchmarkRunner:
         
         print(f"  Benchmarking Union-Find...")
         
+        # Measure memory before running algorithm
         mem_before = get_memory_usage()
-        start_time = time.perf_counter()
+        start_time = time.perf_counter()  # High precision timer
         
+        # Run Union-Find algorithm to find connected components (market segments)
         uf, components = find_market_segments(graph)
         
+        # Measure time and memory after completion
         end_time = time.perf_counter()
         mem_after = get_memory_usage()
         
@@ -493,16 +496,18 @@ class UniversalBenchmarkRunner:
                 # Build graph
                 print("  Building graph...")
                 # Realistic correlation thresholds based on actual market behavior
-                # Lower threshold = more edges (easier to connect)
-                # Higher threshold = fewer edges (harder to connect)
+                # Lower threshold = more edges (easier to connect) = fewer components
+                # Higher threshold = fewer edges (harder to connect) = more components
+                # These values are tuned to create meaningful graph structures
                 if scenario == "crash":
-                    threshold = 0.10  # Crash: everything correlates (panic selling) - 1 component always
+                    threshold = 0.10  # Crash: everything correlates (panic selling) - 1 giant component
                 elif scenario == "stable":
-                    threshold = 0.40  # Stable: sector separation - few components, > crash
+                    threshold = 0.40  # Stable: clear sector separation - few large components
                 elif scenario == "normal":
-                    threshold = 0.44  # Normal: moderate fragmentation - middle ground
+                    threshold = 0.44  # Normal: moderate fragmentation - balanced structure
                 else:  # volatile
-                    threshold = 0.68  # Volatile: near complete isolation - approaching num_stocks components
+                    threshold = 0.68  # Volatile: weak correlations - many small components
+                # Build graph: only create edges where correlation >= threshold
                 graph = build_graph_from_correlation(corr_matrix, stock_attrs, threshold)
                 
                 stats = get_graph_statistics(graph)

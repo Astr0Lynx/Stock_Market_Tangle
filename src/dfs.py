@@ -65,24 +65,26 @@ class DFS:
     
     def _dfs_recursive_helper(self, node: str, target: Optional[str] = None):
         """Helper function for recursive DFS."""
+        # Mark as visited and add to traversal order
         self.visited.add(node)
         self.traversal_order.append(node)
-        self.discovery_time[node] = self.time_counter
+        self.discovery_time[node] = self.time_counter  # Track when node was discovered
         self.time_counter += 1
         
-        # Early termination if target found
+        # Early termination optimization: stop if we found the target
         if target and node == target:
             return True
         
-        # Visit all unvisited neighbors
+        # Recursively visit all unvisited neighbors (depth-first approach)
+        # Sort for consistent ordering in results
         neighbors = self.graph.get_neighbors(node)
-        for neighbor in sorted(neighbors.keys()):  # Sort for consistent ordering
-            if neighbor not in self.visited:
-                self.parent[neighbor] = node
-                if self._dfs_recursive_helper(neighbor, target):
-                    return True
+        for neighbor in sorted(neighbors.keys()):
+            if neighbor not in self.visited:  # Only visit unvisited nodes
+                self.parent[neighbor] = node  # Track path for reconstruction
+                if self._dfs_recursive_helper(neighbor, target):  # Recurse deeper
+                    return True  # Propagate success up the recursion
         
-        self.finish_time[node] = self.time_counter
+        self.finish_time[node] = self.time_counter  # Track when node finished processing
         self.time_counter += 1
         return False
     
@@ -104,26 +106,28 @@ class DFS:
             return []
         
         self.reset()
-        stack = [start_node]
+        stack = [start_node]  # Use stack for LIFO (Last In First Out) - key DFS property
         
         while stack:
-            node = stack.pop()
+            node = stack.pop()  # Pop from top of stack (most recently added)
             
             if node not in self.visited:
+                # Mark and process node
                 self.visited.add(node)
                 self.traversal_order.append(node)
                 
-                # Early termination if target found
+                # Early termination if we found what we're looking for
                 if target and node == target:
                     break
                 
                 # Add neighbors to stack (reverse sorted for consistent ordering)
+                # Reverse order ensures sorted neighbors are processed in correct order
                 neighbors = self.graph.get_neighbors(node)
                 for neighbor in sorted(neighbors.keys(), reverse=True):
                     if neighbor not in self.visited:
-                        stack.append(neighbor)
+                        stack.append(neighbor)  # Push to stack (will be processed next)
                         if neighbor not in self.parent:
-                            self.parent[neighbor] = node
+                            self.parent[neighbor] = node  # Track parent for path reconstruction
         
         return self.traversal_order.copy()
     

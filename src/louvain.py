@@ -47,32 +47,37 @@ def modularity(graph: Graph, partition: Iterable[Iterable[str]]) -> float:
 
     Uses weighted modularity definition:
     Q = (1/(2m)) * sum_{ij} [ A_ij - (k_i k_j) / (2m) ] delta(c_i, c_j)
+    
+    Modularity measures how well the partition captures community structure.
+    Higher modularity = better community detection (range: -1 to 1, typically 0.3-0.7)
     """
     communities = [list(c) for c in partition]
-    m = _total_edge_weight(graph)
+    m = _total_edge_weight(graph)  # Total edge weight (2m in formula)
     if m == 0:
         return 0.0
 
-    strengths = _node_strengths(graph)
+    strengths = _node_strengths(graph)  # Sum of edge weights for each node (degree)
     norm = 2.0 * m
     node_index = {node: idx for idx, node in enumerate(graph.get_nodes())}
 
-    # Build quick lookup for adjacency weights
+    # Build quick lookup for adjacency weights (edge existence and strength)
     adj = {}
     for u, v, w in graph.get_edges():
         adj.setdefault(u, {})[v] = float(w)
-        adj.setdefault(v, {})[u] = float(w)
+        adj.setdefault(v, {})[u] = float(w)  # Undirected graph
 
+    # Calculate modularity: actual edges - expected edges under random model
     q = 0.0
     for community in communities:
         for i in community:
             for j in community:
-                Aij = adj.get(i, {}).get(j, 0.0)
-                ki = strengths.get(i, 0.0)
-                kj = strengths.get(j, 0.0)
+                Aij = adj.get(i, {}).get(j, 0.0)  # Actual edge weight (0 if no edge)
+                ki = strengths.get(i, 0.0)  # Node i's total edge weight
+                kj = strengths.get(j, 0.0)  # Node j's total edge weight
+                # Q += [actual - expected] where expected = (ki * kj) / (2m)
                 q += Aij - (ki * kj) / norm
 
-    return q / norm
+    return q / norm  # Normalize by total edge weight
 
 
 def _aggregate_graph(graph: Graph, partition_map: Dict[str, int]) -> Graph:
@@ -136,23 +141,27 @@ def louvain(graph: Graph, resolution: float = 1.0, random_state: int | None = No
         random.seed(random_state)
 
     working_graph = graph
-    # Initial partition: each node in its own community
+    # Initial partition: each node starts in its own community (singleton communities)
     partition_map = {node: idx for idx, node in enumerate(working_graph.get_nodes())}
-    strengths = _node_strengths(working_graph)
-    m = _total_edge_weight(working_graph)
+    strengths = _node_strengths(working_graph)  # Calculate node degrees
+    m = _total_edge_weight(working_graph)  # Total edge weight for modularity calculation
     if m == 0:
         return _partition_to_communities(partition_map), 0.0
 
     current_mod = modularity(working_graph, _partition_to_communities(partition_map))
-    improvement = True
+    improvement = True  # Flag to track if modularity improved
+    
+    # Main loop: repeat until no improvement (hierarchical community detection)
     while improvement:
         improvement = False
         passes = 0
+        
+        # Phase 1: Iteratively move nodes to improve modularity
         while passes < max_passes:
             passes += 1
-            moved = 0
+            moved = 0  # Count how many nodes changed communities
             nodes = working_graph.get_nodes()
-            random.shuffle(nodes)
+            random.shuffle(nodes)  # Random order reduces bias
 
             # Community weights
             comm_weight: Dict[int, float] = {}

@@ -56,22 +56,25 @@ class StockDataGenerator:
             num_stocks
         )
         
-        # Generate correlated returns using a factor model
-        # This creates realistic correlation structure
-        num_factors = max(3, num_stocks // 10)  # Number of market factors
+        # Generate correlated returns using a factor model (mimics real market behavior)
+        # This creates realistic correlation structure (stocks influenced by common factors)
+        num_factors = max(3, num_stocks // 10)  # Number of market factors (tech sector, energy, etc.)
         
-        # Factor loadings (how much each stock is influenced by each factor)
+        # Factor loadings: how much each stock is influenced by each factor
+        # E.g., tech stocks have high loading on "tech factor"
         factor_loadings = np.random.randn(num_stocks, num_factors) * 0.5
         
-        # Factor returns (market-wide influences)
+        # Factor returns: market-wide influences (e.g., interest rate changes, oil prices)
+        # These affect multiple stocks simultaneously, creating correlations
         factor_returns = np.random.randn(num_days, num_factors) * 0.02
         
-        # Idiosyncratic returns (stock-specific)
+        # Idiosyncratic returns: stock-specific random noise (company earnings, scandals)
         idiosyncratic = np.random.randn(num_days, num_stocks)
         
-        # Combine to get stock returns
-        returns = (factor_returns @ factor_loadings.T + 
-                  idiosyncratic * volatilities) + mean_return
+        # Combine to get final stock returns: common factors + individual noise + drift
+        # This is the Fama-French factor model approach
+        returns = (factor_returns @ factor_loadings.T +  # Shared market movements
+                  idiosyncratic * volatilities) + mean_return  # Individual variation
         
         # Create DataFrame
         df_returns = pd.DataFrame(returns, columns=stock_names)
@@ -152,19 +155,19 @@ class StockDataGenerator:
         Returns:
             Tuple of (returns DataFrame, correlation matrix, stock attributes dict)
         """
-        # Adjust parameters based on scenario
+        # Adjust parameters based on market scenario (affects graph connectivity)
         if scenario == "stable":
-            mean_return = 0.0015
-            volatility_range = (0.005, 0.02)
+            mean_return = 0.0015  # Positive returns
+            volatility_range = (0.005, 0.02)  # Low volatility -> high correlations -> fewer components
         elif scenario == "volatile":
-            mean_return = 0.0005
-            volatility_range = (0.03, 0.08)
+            mean_return = 0.0005  # Small positive returns
+            volatility_range = (0.03, 0.08)  # High volatility -> low correlations -> more components
         elif scenario == "crash":
-            mean_return = -0.002
-            volatility_range = (0.05, 0.15)
+            mean_return = -0.002  # Negative returns (market crash)
+            volatility_range = (0.05, 0.15)  # Very high volatility -> everything moves together -> 1 component
         else:  # normal
-            mean_return = 0.001
-            volatility_range = (0.01, 0.05)
+            mean_return = 0.001  # Typical positive drift
+            volatility_range = (0.01, 0.05)  # Moderate volatility -> moderate fragmentation
         
         # Generate data
         returns = self.generate_stock_returns(

@@ -33,15 +33,17 @@ class UnionFind:
             elements: List of element identifiers (stock names)
         """
         # Each element starts as its own parent (separate set)
+        # Initially, every stock is in its own isolated component
         self.parent: Dict[str, str] = {elem: elem for elem in elements}
         
-        # Rank represents approximate depth of tree (for union by rank)
+        # Rank represents approximate depth of tree (for union by rank optimization)
+        # Helps keep the tree structure flat for faster lookups
         self.rank: Dict[str, int] = {elem: 0 for elem in elements}
         
-        # Number of disjoint sets
+        # Number of disjoint sets (starts at N, decreases with each union)
         self.num_components = len(elements)
         
-        # Track component sizes
+        # Track component sizes for analysis (which market segments are largest)
         self.component_size: Dict[str, int] = {elem: 1 for elem in elements}
     
     def find(self, elem: str) -> str:
@@ -61,9 +63,11 @@ class UnionFind:
         if elem not in self.parent:
             raise ValueError(f"Element {elem} not in Union-Find structure")
         
-        # Path compression: make elem point directly to root
+        # Path compression optimization: recursively set parent to root
+        # This flattens the tree structure for faster future lookups
+        # Example: if A -> B -> C -> D, after find(A), we get A -> D, B -> D, C -> D
         if self.parent[elem] != elem:
-            self.parent[elem] = self.find(self.parent[elem])
+            self.parent[elem] = self.find(self.parent[elem])  # Recursive compression
         
         return self.parent[elem]
     
@@ -90,17 +94,18 @@ class UnionFind:
         if root1 == root2:
             return False
         
-        # Union by rank: attach smaller tree under larger tree
+        # Union by rank optimization: attach smaller tree under larger tree
+        # This keeps the overall tree structure shallow (better performance)
         if self.rank[root1] < self.rank[root2]:
-            self.parent[root1] = root2
-            self.component_size[root2] += self.component_size[root1]
+            self.parent[root1] = root2  # Make root2 the parent
+            self.component_size[root2] += self.component_size[root1]  # Update size
         elif self.rank[root1] > self.rank[root2]:
-            self.parent[root2] = root1
-            self.component_size[root1] += self.component_size[root2]
+            self.parent[root2] = root1  # Make root1 the parent
+            self.component_size[root1] += self.component_size[root2]  # Update size
         else:
-            # Equal rank: make one root and increase its rank
+            # Equal rank: arbitrarily choose root1 and increase its rank by 1
             self.parent[root2] = root1
-            self.rank[root1] += 1
+            self.rank[root1] += 1  # Only time rank increases
             self.component_size[root1] += self.component_size[root2]
         
         # Decrease number of components
@@ -242,7 +247,7 @@ def analyze_market_segments(uf: UnionFind,
         
         # Dominant category
         dominant_category = max(category_counts.items(), 
-                               key=lambda x: x[1])[0] if category_counts else "unknown"
+                               key=lambda x: x[1])[0] if categor   y_counts else "unknown"
         
         segment_info = {
             'size': len(stocks_list),

@@ -59,47 +59,56 @@ class PageRank:
         if self.num_nodes == 0:
             return {}
         
-        # Initialize scores uniformly
+        # Initialize scores uniformly (each node gets equal initial score)
         initial_score = 1.0 / self.num_nodes
-        current_scores = np.full(self.num_nodes, initial_score)
-        new_scores = np.zeros(self.num_nodes)
+        current_scores = np.full(self.num_nodes, initial_score)  # Start with 1/N for all nodes
+        new_scores = np.zeros(self.num_nodes)  # Array for updated scores
         
         self.convergence_history = []
         
+        # Iterative power method: repeatedly apply PageRank update until convergence
         for iteration in range(max_iterations):
-            # Reset new scores
+            # Reset new scores with teleportation probability (random jump to any node)
+            # (1-d)/N represents probability of random teleportation to this node
             new_scores.fill((1 - self.damping_factor) / self.num_nodes)
             
-            # Calculate contributions from each node
+            # Calculate contributions from each node to its neighbors
             for i, node in enumerate(self.nodes):
                 neighbors = self.graph.get_neighbors(node)
                 
                 if not neighbors:
-                    # Dangling node - distribute score equally
+                    # Dangling node (no outgoing edges): distribute score equally to all nodes
+                    # This prevents score from "leaking out" of the graph
                     contribution = self.damping_factor * current_scores[i] / self.num_nodes
                     new_scores += contribution
                 else:
                     # Calculate outgoing weight sum for normalization
                     if weighted:
+                        # Use correlation strengths as transition probabilities
                         total_weight = sum(abs(weight) for weight in neighbors.values())
                     else:
+                        # Equal probability to all neighbors (classic PageRank)
                         total_weight = len(neighbors)
                     
-                    # Distribute score to neighbors
+                    # Distribute score to neighbors based on edge weights
                     for neighbor, weight in neighbors.items():
-                        j = self.node_to_index[neighbor]
+                        j = self.node_to_index[neighbor]  # Get neighbor's index
                         
                         if weighted and total_weight > 0:
                             # Use correlation strength as transition probability
+                            # Higher correlation = more score transferred
                             transition_prob = abs(weight) / total_weight
                         else:
-                            # Equal probability to all neighbors
+                            # Equal probability to all neighbors (1/degree)
                             transition_prob = 1.0 / len(neighbors)
                         
+                        # PageRank formula: score[j] += d * score[i] * P(i->j)
+                        # Damping factor d: probability of following a link vs random jump
                         contribution = self.damping_factor * current_scores[i] * transition_prob
                         new_scores[j] += contribution
             
-            # Check convergence
+            # Check convergence: sum of absolute differences between iterations
+            # Stop early if scores have stabilized (change < tolerance)
             diff = np.sum(np.abs(new_scores - current_scores))
             self.convergence_history.append(diff)
             

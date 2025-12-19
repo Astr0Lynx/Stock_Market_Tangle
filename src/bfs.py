@@ -34,28 +34,29 @@ def bfs_shortest_path(graph, start: str, end: str) -> Optional[List[str]]:
         return [start]
     
     # Queue stores tuples of (current_node, path_to_node)
+    # deque is efficient for FIFO operations (popleft is O(1))
     queue = deque([(start, [start])])
-    visited = {start}
+    visited = {start}  # Track visited nodes to avoid cycles
     
     while queue:
-        current, path = queue.popleft()
+        current, path = queue.popleft()  # Get next node from front of queue (FIFO)
         
-        # Explore neighbors
+        # Explore all neighbors of current node
         neighbors = graph.get_neighbors(current)
         for neighbor in neighbors:
-            if neighbor in visited:
+            if neighbor in visited:  # Skip already explored nodes
                 continue
             
-            # Build path to neighbor
+            # Build path by extending current path with this neighbor
             new_path = path + [neighbor]
             
-            # Check if we reached the target
+            # Check if we reached the target (BFS guarantees this is shortest path)
             if neighbor == end:
                 return new_path
             
-            # Add to queue for further exploration
+            # Add to queue for further exploration (breadth-first layer by layer)
             queue.append((neighbor, new_path))
-            visited.add(neighbor)
+            visited.add(neighbor)  # Mark as visited
     
     # No path found
     return None

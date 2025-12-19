@@ -3,16 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.egg-info/
 .Python
 venv/
 env/
 ENV/
-
-# Data and Results
-data/
-results/
-*.json
-*.csv
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
 
 # IDE
 .vscode/
@@ -20,7 +18,36 @@ results/
 *.swp
 *.swo
 *~
+.spyderproject
+.spyproject
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# Project specific
+data/
+*.json
+*.csv
+
+# Keep results directory structure but ignore contents
+results/*
+!results/.gitkeep
+
+# Documentation artifacts
+*.pdf
+*.docx
+~$*.docx
+
+# Test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log
